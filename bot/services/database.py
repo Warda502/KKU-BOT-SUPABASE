@@ -27,70 +27,6 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables created successfully")
 
-        await drop_publish_to_channel_column()
-        await drop_news_title_column()
-        await drop_news_publish_columns()
-
-        # Add missing columns — uses savepoints so each statement is independent
-        # Works for both PostgreSQL (IF NOT EXISTS) and SQLite (error caught per-statement)
-        alter_statements = [
-            "ALTER TABLE study_plans ADD COLUMN IF NOT EXISTS channel_message_id INTEGER",
-            "ALTER TABLE study_plans ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES study_plan_groups(id)",
-            "ALTER TABLE study_plans ADD COLUMN IF NOT EXISTS target_channels TEXT",
-            "ALTER TABLE study_plan_groups ADD COLUMN IF NOT EXISTS channel_message_id INTEGER",
-            "ALTER TABLE study_plan_groups ADD COLUMN IF NOT EXISTS specialization VARCHAR(200)",
-            "ALTER TABLE study_plan_groups ADD COLUMN IF NOT EXISTS link VARCHAR(500)",
-            "ALTER TABLE auto_responses ADD COLUMN IF NOT EXISTS as_document BOOLEAN DEFAULT FALSE",
-            "ALTER TABLE auto_responses ADD COLUMN IF NOT EXISTS file_url VARCHAR(500)",
-            "ALTER TABLE auto_responses ADD COLUMN IF NOT EXISTS file_type VARCHAR(50)",
-            "ALTER TABLE auto_responses ADD COLUMN IF NOT EXISTS source_chat_id BIGINT",
-            "ALTER TABLE auto_responses ADD COLUMN IF NOT EXISTS source_message_id INTEGER",
-            "ALTER TABLE auto_responses ADD COLUMN IF NOT EXISTS file_tg_id VARCHAR(200)",
-            "ALTER TABLE auto_responses ADD COLUMN IF NOT EXISTS news_id INTEGER REFERENCES news(id)",
-            "ALTER TABLE questions ADD COLUMN IF NOT EXISTS as_document BOOLEAN DEFAULT FALSE",
-            "ALTER TABLE questions ADD COLUMN IF NOT EXISTS file_url VARCHAR(500)",
-            "ALTER TABLE questions ADD COLUMN IF NOT EXISTS file_type VARCHAR(50)",
-            "ALTER TABLE questions ADD COLUMN IF NOT EXISTS news_id INTEGER REFERENCES news(id)",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS as_document BOOLEAN DEFAULT FALSE",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS file_type VARCHAR(50)",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS file_id VARCHAR(200)",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR(500)",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS channel_message_id INTEGER",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS group_message_ids TEXT",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS target_channels TEXT",
-            "ALTER TABLE news ADD COLUMN IF NOT EXISTS files_json TEXT",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS as_document BOOLEAN DEFAULT FALSE",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS target_channels TEXT",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS group_message_ids TEXT",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS files_json TEXT",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS file_type VARCHAR(50)",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS file_id VARCHAR(200)",
-            "ALTER TABLE scheduled_posts ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR(500)",
-        ]
-
-        for sql in alter_statements:
-            try:
-                async with conn.begin_nested():
-                    await conn.execute(text(sql))
-            except Exception as e:
-                logger.debug(f"DDL skipped: {e}")
-
-        result = await conn.execute(select(StudyPlan).limit(1))
-        if not result.scalar_one_or_none():
-            for plan_data in [
-                ("خطة بكالوريوس هندسة الحاسب", "برنامج دراسي لدرجة البكالوريوس في هندسة الحاسب والمعلومات، يشمل البرمجة وشبكات الحاسب والذكاء الاصطناعي", "كلية الهندسة", "بكالوريوس"),
-                ("خطة بكالوريوس إدارة الأعمال", "برنامج دراسي لدرجة البكالوريوس في إدارة الأعمال، يشمل التسويق والمالية وإدارة الموارد البشرية", "كلية إدارة الأعمال", "بكالوريوس"),
-                ("خطة بكالوريوس الطب البشري", "برنامج دراسي لدرجة بكالوريوس الطب البشري، مدة 7 سنوات تشمل مرحلة العلوم الطبية والتمريض والتدريب السريري", "كلية الطب", "بكالوريوس"),
-                ("خطة بكالوريوس التربية", "برنامج دراسي لدرجة البكالوريوس في التربية، يشمل أساليب التدريس وعلم النفس التربوي والمناهج", "كلية التربية", "بكالوريوس"),
-            ]:
-                await conn.execute(
-                    text("INSERT INTO study_plans (title, description, faculty, level, is_active, created_at) VALUES (:title, :description, :faculty, :level, true, CURRENT_TIMESTAMP)"),
-                    {"title": plan_data[0], "description": plan_data[1], "faculty": plan_data[2], "level": plan_data[3]}
-                )
-            logger.info("Seeded 4 test study plans")
-
 
 async def get_user(telegram_id: int) -> User | None:
     async with async_session() as session:
@@ -497,36 +433,6 @@ async def delete_all_scheduled_posts():
     async with async_session() as session:
         await session.execute(text("DELETE FROM scheduled_posts"))
         await session.commit()
-
-
-async def drop_publish_to_channel_column():
-    async with engine.begin() as conn:
-        try:
-            await conn.execute(text("ALTER TABLE scheduled_posts DROP COLUMN IF EXISTS publish_to_channel"))
-            logger.info("Dropped publish_to_channel column from scheduled_posts")
-            await conn.execute(text("ALTER TABLE scheduled_posts DROP COLUMN IF EXISTS title"))
-            logger.info("Dropped title column from scheduled_posts")
-        except Exception as e:
-            logger.warning(f"Could not drop publish_to_channel column: {e}")
-
-
-async def drop_news_title_column():
-    async with engine.begin() as conn:
-        try:
-            await conn.execute(text("ALTER TABLE news DROP COLUMN IF EXISTS title"))
-            logger.info("Dropped title column from news")
-        except Exception as e:
-            logger.warning(f"Could not drop title column: {e}")
-
-
-async def drop_news_publish_columns():
-    async with engine.begin() as conn:
-        try:
-            await conn.execute(text("ALTER TABLE news DROP COLUMN IF EXISTS publish_to_channel"))
-            await conn.execute(text("ALTER TABLE news DROP COLUMN IF EXISTS publish_to_groups"))
-            logger.info("Dropped publish_to_channel and publish_to_groups columns from news")
-        except Exception as e:
-            logger.warning(f"Could not drop publish_to columns from news: {e}")
 
 
 # ==================== Study Plan Groups ====================
