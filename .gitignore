@@ -50,6 +50,7 @@ data/*
 
 # Node.js (dashboard)
 dashboard/node_modules/
+dashboard/dist/
 dashboard/.env
 
 # Temporary files
