@@ -22,7 +22,8 @@ app.add_middleware(
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    from bot.config import DATABASE_URL
+    return {"status": "healthy", "db_url_prefix": DATABASE_URL[:40] if DATABASE_URL else "empty"}
 
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
@@ -59,5 +60,5 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled API exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "حدث خطأ داخلي في الخادم"}
+        content={"detail": str(exc)}
     )
