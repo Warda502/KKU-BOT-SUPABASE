@@ -1,6 +1,11 @@
 {
   "buildCommand": "cd dashboard && npm install && npm run build",
   "outputDirectory": "dashboard/dist",
+  "functions": {
+    "api/index.py": {
+      "runtime": "@vercel/python@3.12"
+    }
+  },
   "framework": null,
   "rewrites": [
     {
