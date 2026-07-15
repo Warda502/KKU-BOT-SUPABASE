@@ -3,8 +3,6 @@ import os
 import asyncio
 import tempfile
 import httpx
-import fitz
-from hijri_converter import Hijri
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -64,6 +62,7 @@ async def _get_channel_username():
 def _generate_pdf_thumbnail(pdf_bytes: bytes, folder: str = "kku-bot/plans") -> str | None:
     """Generate a JPEG thumbnail from PDF bytes, upload to R2, return URL or None."""
     try:
+        import fitz
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf_bytes)
             tmp_path = tmp.name
@@ -90,6 +89,7 @@ def _generate_pdf_thumbnail(pdf_bytes: bytes, folder: str = "kku-bot/plans") -> 
 def _generate_pdf_thumbnail_bytes(pdf_bytes: bytes) -> bytes | None:
     """Generate a JPEG thumbnail from PDF bytes, return resized bytes for upload."""
     try:
+        import fitz
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf_bytes)
             tmp_path = tmp.name
@@ -177,6 +177,7 @@ async def update_group_post(group_id: int, force_new: bool = False):
         if not channel_username:
             return
 
+        from hijri_converter import Hijri
         today = Hijri.today()
         arabic_year = to_arabic_numerals(today.year)
         text = f"{group.title} {arabic_year}هـ\n"

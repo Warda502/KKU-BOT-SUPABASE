@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from bot.services.database import async_session, add_news, get_all_news, publish_news, delete_news, add_auto_response, add_question, update_news, delete_all_news, get_news_by_id
-from bot.services.news_publisher import publish_to_groups, delete_from_channel, delete_from_groups, edit_published_messages, resend_published_messages
 from bot.services.cloud_storage import upload_image, upload_raw
 
 from bot.models.models import News
@@ -241,6 +240,7 @@ async def publish_news_endpoint(news_id: int):
 
         as_document = news.as_document
         text = news.content
+        from bot.services.news_publisher import publish_to_groups
         sent, channel_message_id, group_message_ids = await publish_to_groups(text=text, image_url=news.image_url, file_url=news.file_url, file_id=news.file_id,
                                         as_document=as_document,
                                         file_name=news.file_name, thumbnail_url=news.thumbnail_url,
@@ -262,11 +262,13 @@ async def delete_news_endpoint(news_id: int):
     if n:
         if n.group_message_ids:
             try:
+                from bot.services.news_publisher import delete_from_groups
                 await delete_from_groups(n.group_message_ids)
             except:
                 pass
         if n.channel_message_id:
             try:
+                from bot.services.news_publisher import delete_from_channel
                 await delete_from_channel(n.channel_message_id)
             except:
                 pass
@@ -314,6 +316,7 @@ async def edit_news(news_id: int, data: NewsCreate):
             pass
     
     if n.is_published and (group_message_ids or n.channel_message_id):
+        from bot.services.news_publisher import edit_published_messages
         text = data.content
         edited_count, failed_count = await edit_published_messages(
             text=text,
@@ -447,6 +450,7 @@ async def edit_news_with_file(
     
     if existing.is_published and (group_message_ids or existing.channel_message_id):
         if files_changed:
+            from bot.services.news_publisher import resend_published_messages
             edited_count, failed_count, new_group_ids, new_channel_id = await resend_published_messages(
                 text=content,
                 group_message_ids=group_message_ids,
@@ -459,6 +463,7 @@ async def edit_news_with_file(
                 files_json=json.dumps(files_json_data) if files_json_data else None
             )
         else:
+            from bot.services.news_publisher import edit_published_messages
             edited_count, failed_count = await edit_published_messages(
                 text=content,
                 group_message_ids=group_message_ids,
@@ -492,12 +497,14 @@ async def delete_from_channel_endpoint(news_id: int):
     # Delete from channel
     if n.channel_message_id:
         try:
+            from bot.services.news_publisher import delete_from_channel
             await delete_from_channel(n.channel_message_id)
         except:
             pass
     # Delete from groups
     if n.group_message_ids:
         try:
+            from bot.services.news_publisher import delete_from_groups
             group_ids = json.loads(n.group_message_ids) if isinstance(n.group_message_ids, str) else n.group_message_ids
             await delete_from_groups(group_ids)
         except:
@@ -514,12 +521,14 @@ async def delete_all_news_endpoint():
     for item in items:
         if item.group_message_ids:
             try:
+                from bot.services.news_publisher import delete_from_groups
                 group_ids = json.loads(item.group_message_ids)
                 await delete_from_groups(group_ids)
             except:
                 pass
         if item.channel_message_id:
             try:
+                from bot.services.news_publisher import delete_from_channel
                 await delete_from_channel(item.channel_message_id)
             except:
                 pass

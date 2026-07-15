@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from telegram import Bot
 import os
 import json
 from ...models.models import News, ScheduledPost, StudyPlan, ChannelGroup
@@ -179,6 +178,7 @@ async def update_channel_group_endpoint(group_id: int, data: ChannelGroupUpdate)
     # If title was updated, also update on Telegram
     if data.title:
         try:
+            from telegram import Bot
             bot_token = os.getenv("BOT_TOKEN")
             bot = Bot(token=bot_token)
             await bot.set_chat_title(group.chat_id, data.title)
