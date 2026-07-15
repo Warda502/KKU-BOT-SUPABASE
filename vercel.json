@@ -3,7 +3,7 @@
   "outputDirectory": "dashboard/dist",
   "functions": {
     "api/index.py": {
-      "runtime": "@vercel/python@3.12"
+      "runtime": "@vercel/python@3.12.3"
     }
   },
   "framework": null,
